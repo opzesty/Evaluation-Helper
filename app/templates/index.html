@@ -1,0 +1,24 @@
+<!doctype html>
+
+<html lang="en-us">   
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>Welcome home</title>
+  </head>
+  
+  <body>
+    <h2>{{ session.user }} you are logged in.</h2>
+    <h1>Pull Day Observation Template</h1>
+		<form action="/pull_day" method = "POST">
+				<p>Team <input type = "text" name = "team" /></p>
+				<p>Day <input type = "text" name = "day" /></p>
+				<p><input type = "submit" value = "submit" /></p>
+		</form>
+    <h1>Send the loaded observations</h1>
+		<form action="/update_msel" method = "POST">
+				<p>Team <input type = "text" name = "team" /></p>
+				<p><input type = "submit" value = "submit" /></p>
+		</form>
+  </body> 
+</html>
