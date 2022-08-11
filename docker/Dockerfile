@@ -1,10 +1,11 @@
-FROM tiangolo/uwsgi-nginx-flask:python3.8-alpine
+FROM python:3.8-slim-buster
 
 WORKDIR /app
 
 COPY . .
 
-RUN pip3 install requests pyyaml Flask-Session
-RUN pip3 install -r requirements.txt
+RUN pip3 install requests pyyaml
 
 ENV PYTHONWARNINGS="ignore:Unverified HTTPS request"
+
+CMD ["python3", "upload.py"] 

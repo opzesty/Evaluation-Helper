@@ -2,8 +2,8 @@
 import requests
 import json
 import yaml
-import os
 
+msel_id='32.02.07'
 
 session = requests.Session()
 
@@ -13,7 +13,8 @@ with open("config.yaml", mode="rt", encoding="utf-8") as file:
 with open(str(config['day']) + ".yaml", mode="rt", encoding="utf-8") as file:
     evaluations = yaml.safe_load(file)
 
-session.post('https://3.14.124.94/login', data={"username": os.environ["matt_user"], "password": os.environ["matt_password"]}, verify=False)
+session.post('https://3.14.124.94/login', data={"username": config["username"], "password": config["password"]}, verify=False)
+
 
 msel_r = session.get('https://3.14.124.94/api/measure-evaluations', verify=False)
 

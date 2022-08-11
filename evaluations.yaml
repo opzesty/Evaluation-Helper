@@ -1,16 +1,16 @@
 ---
 - inject_id: 32.02.07
   measure_code: OP1.3.1
-  grade: Meets Standard
+  grade: Exceeds Expecation
   comment: >
     Driver properly accelerated to the posted highway speed before merging. ZJR 9 Aug 2022 1033 hrs
 - inject_id: 32.02.07
   measure_code: OP2.1.2
-  grade: Needs Improvment
+  grade: Meets Standard
   comment: >
     Driver used proper signal, but did not check for clear lane and safely moved to the adjacent lane.  ZJR 9 AUG 2022, 1022 hrs 
 - inject_id: 32.02.07
   measure_code: OP2.1.7
   grade: Meets Standard
   comment: >
-
+    They did pretty good I guess. ZJR 9 AUG 2022, 1044 hr
