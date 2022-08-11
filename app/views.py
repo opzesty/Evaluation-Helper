@@ -1,10 +1,12 @@
 from app import app
-from flask import render_template, request, session, redirect
+from flask import render_template, request, session, redirect, send_from_directory, make_response
 from flask_session import Session
 import os
+import io
 
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
+app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "uploads")
 Session(app)
 
 @app.route('/')
@@ -21,19 +23,16 @@ def login():
         return redirect("/")
     return render_template('login.html')
 
-@app.route('/pull_day', methods = ['POST'])
-def pull_daily_observations():
+@app.route('/pull_day_yaml', methods = ['POST'])
+def pull_daily_observations_yaml():
     import requests
     import json
     import yaml
 
     session["team"] = request.form.get("team")
     session["day"] = request.form.get("day")
-    print("team: " + session["team"])
-    print("day: " + session["day"])
 
     r_session = requests.Session()
-
     r_session.post('https://3.14.124.94/login', data={"username": session.get("user"), "password": session.get("password")}, verify=False)
 
     msel_r = r_session.get('https://3.14.124.94/api/measure-evaluations', verify=False)
@@ -43,20 +42,80 @@ def pull_daily_observations():
     for entry in msel_json:
         if entry["startDay"] == int(session["day"]) and entry["team"] == session["team"]:
             relevant_grading_opportunity.append(entry)
-    print(relevant_grading_opportunity)
+
+    relevant_grading_opportunity = sorted(relevant_grading_opportunity, key=lambda x: x['mselId'])
 
     matt_responses = []
-    matt_responses.append('---\n')
+    matt_responses.append('---')
     for entry in relevant_grading_opportunity:
-        matt_responses.append('- inject_id: ' + entry['mselId'] + "\n")
-        matt_responses.append('  Inject Title: ' + entry['title'] + "\n")
-        matt_responses.append('  measure_code: ' + entry['measureCode'] + "\n")
-        matt_responses.append('  MOP/MOE Description: ' + entry['description'] + "\n")
-        matt_responses.append('  grade: ' + "\n")
-        matt_responses.append('  comment: >' + "\n")
-        matt_responses.append("\n")
+        matt_responses.append('- inject_id: ' + entry['mselId'])
+        matt_responses.append('  Inject Title: ' + entry['title'])
+        matt_responses.append('  measure_code: ' + entry['measureCode'])
+        matt_responses.append('  MOP/MOE Description: ' + entry['description'])
+        matt_responses.append('  grade: ')
+        matt_responses.append('  comment: >')
+        matt_responses.append('\n')
 
-    return render_template('observation_results.html', matt_responses = matt_responses)
+    resp = make_response(render_template('observation_results.yaml', matt_responses = matt_responses))
+    resp.headers['Content-Type'] = 'application/octet-stream'
+    return resp
+
+@app.route('/pull_day_excel', methods = ['POST'])
+def pull_daily_observations_excel():
+    import requests
+    import json
+    import yaml
+    import xlsxwriter
+
+    session["team"] = request.form.get("team")
+    session["day"] = request.form.get("day")
+
+    r_session = requests.Session()
+    r_session.post('https://3.14.124.94/login', data={"username": session.get("user"), "password": session.get("password")}, verify=False)
+
+    msel_r = r_session.get('https://3.14.124.94/api/measure-evaluations', verify=False)
+    msel_json = json.loads(msel_r.text)
+
+    relevant_grading_opportunity = []
+    for entry in msel_json:
+        if entry["startDay"] == int(session["day"]) and entry["team"] == session["team"]:
+            relevant_grading_opportunity.append(entry)
+
+    relevant_grading_opportunity = sorted(relevant_grading_opportunity, key=lambda x: x['mselId'])
+
+    file_name = session["day"] + ".xlsx"
+    workbook = xlsxwriter.Workbook(os.path.join(app.config["UPLOAD_FOLDER"], file_name))
+    worksheet = workbook.add_worksheet()
+
+    matt_responses = []
+    current_msel = ''
+    row_number = 1
+    for entry in relevant_grading_opportunity:
+        if current_msel == entry['mselId']:
+            worksheet.write('B'+str(row_number), entry["measureCode"])
+            worksheet.write('C'+str(row_number), entry["description"])
+            row_number += 1
+        else:
+            current_msel = entry['mselId']
+            worksheet.write('A'+str(row_number), "Inject ID: ")
+            worksheet.write('B'+str(row_number), entry["mselId"])
+            worksheet.write('C'+str(row_number), "Inject Title")
+            worksheet.write('D'+str(row_number), entry["title"])
+            row_number += 1
+            worksheet.write('B'+str(row_number), "Measure Code")
+            worksheet.write('C'+str(row_number), "MOP/MOE Description")
+            worksheet.write('D'+str(row_number), "Grade")
+            worksheet.write('E'+str(row_number), "Comment")
+            row_number += 1
+            worksheet.write('B'+str(row_number), entry["measureCode"])
+            worksheet.write('C'+str(row_number), entry["description"])
+            row_number += 1
+ 
+    workbook.close()
+
+    #resp = make_response(./session["day"] + ".xlsx")
+    #resp.headers['Content-Type'] = 'text/xlsx'
+    return send_from_directory(app.config["UPLOAD_FOLDER"], file_name, as_attachment=True)
 
 @app.route('/update_msel', methods = ['POST'])
 def send_observations():
