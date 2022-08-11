@@ -9,6 +9,14 @@ app.config["SESSION_TYPE"] = "filesystem"
 app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "uploads")
 Session(app)
 
+matt_ip = "3.21.193.76" #test matt
+#matt_ip = "3.14.124.94" #production matt
+
+@app.route('/test', methods = ['POST'])
+def test():
+    print("name: " + request.form.get("name"))
+    return make_response(request.form.get("name"))
+
 @app.route('/')
 def home():
     if not session.get("user"):
@@ -33,9 +41,9 @@ def pull_daily_observations_yaml():
     session["day"] = request.form.get("day")
 
     r_session = requests.Session()
-    r_session.post('https://3.14.124.94/login', data={"username": session.get("user"), "password": session.get("password")}, verify=False)
+    r_session.post('https://' + matt_ip + '/login', data={"username": session.get("user"), "password": session.get("password")}, verify=False)
 
-    msel_r = r_session.get('https://3.14.124.94/api/measure-evaluations', verify=False)
+    msel_r = r_session.get('https://' + matt_ip + '/api/measure-evaluations', verify=False)
     msel_json = json.loads(msel_r.text)
 
     relevant_grading_opportunity = []
@@ -71,9 +79,9 @@ def pull_daily_observations_excel():
     session["day"] = request.form.get("day")
 
     r_session = requests.Session()
-    r_session.post('https://3.14.124.94/login', data={"username": session.get("user"), "password": session.get("password")}, verify=False)
+    r_session.post('https://' + matt_ip + '/login', data={"username": session.get("user"), "password": session.get("password")}, verify=False)
 
-    msel_r = r_session.get('https://3.14.124.94/api/measure-evaluations', verify=False)
+    msel_r = r_session.get('https://' + matt_ip + '/api/measure-evaluations', verify=False)
     msel_json = json.loads(msel_r.text)
 
     relevant_grading_opportunity = []
@@ -131,9 +139,9 @@ def send_observations():
     with open(str(config['day']) + ".yaml", mode="rt", encoding="utf-8") as file:
         evaluations = yaml.safe_load(file)
 
-    r_session.post('https://3.14.124.94/login', data={"username": session.get("user"), "password": session.get("password")}, verify=False)
+    r_session.post('https://' + matt_ip + '/login', data={"username": session.get("user"), "password": session.get("password")}, verify=False)
 
-    msel_r = r_session.get('https://3.14.124.94/api/measure-evaluations', verify=False)
+    msel_r = r_session.get('https://' + matt_ip + '/api/measure-evaluations', verify=False)
 
     msel_json = json.loads(msel_r.text)
 
@@ -142,7 +150,7 @@ def send_observations():
     for entry in msel_json:
         for evaluation in evaluations:
             if entry['mselId'] == evaluation["inject_id"] and entry["measureCode"] == evaluation["measure_code"] and entry["team"] == config["team"]:
-                response = r_session.post('https://3.14.124.94/api/measure-evaluations/update', json={"id": entry['id'], "status": evaluation["grade"], "tacticalAssessmentComments": evaluation["comment"], "operationalAssessmentComments": None}, headers={'Content-type': 'application/json; charset=utf-8'}, verify=False)
+                response = r_session.post('https://' + matt_ip + '/api/measure-evaluations/update', json={"id": entry['id'], "status": evaluation["grade"], "tacticalAssessmentComments": evaluation["comment"], "operationalAssessmentComments": None}, headers={'Content-type': 'application/json; charset=utf-8'}, verify=False)
                 matt_responses.append("Observation {} for MSEL {}, measurecode {}, team {} was successfully changed to {}".format(entry['id'], entry['mselId'], entry['measureCode'], entry['team'], evaluation['grade']))
                 break
 
