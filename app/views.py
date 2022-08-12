@@ -96,7 +96,6 @@ def pull_daily_observations_excel():
     current_msel = ''
     row_number = 1
     for entry in relevant_grading_opportunity:
-        print(entry)
         if current_msel == entry['mselId']:
             worksheet.write('B'+str(row_number), entry["measureCode"])
             worksheet.write('C'+str(row_number), entry["description"])
@@ -165,7 +164,7 @@ def send_observations():
         for evaluation in uploads:
             if entry['mselId'] == evaluation["inject_id"] and entry["measureCode"] == evaluation["measure_code"] and entry["team"] == session["team"]:
                 if entry["status"] == evaluation["grade"] and entry["tacticalAssessmentComments"] == evaluation["comment"]:
-                    break
+                    pass
                 else:
                     response = r_session.post('https://' + matt_ip + '/api/measure-evaluations/update', json={"id": entry['id'], "status": evaluation["grade"], "tacticalAssessmentComments": evaluation["comment"], "operationalAssessmentComments": None}, headers={'Content-type': 'application/json; charset=utf-8'}, verify=False)
                     matt_responses.append("Observation {} for MSEL {}, measurecode {}, team {} was successfully changed to {}".format(entry['id'], entry['mselId'], entry['measureCode'], entry['team'], evaluation['grade']))
