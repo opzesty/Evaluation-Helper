@@ -9,8 +9,8 @@ app.config["SESSION_TYPE"] = "filesystem"
 app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "uploads")
 Session(app)
 
-#matt_ip = "3.21.193.76" #test matt
-matt_ip = "3.14.124.94" #production matt
+matt_ip = "3.21.193.76" #test matt
+#matt_ip = "3.14.124.94" #production matt
 
 #@app.route('/test', methods = ['POST'])
 #def test():
