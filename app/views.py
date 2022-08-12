@@ -12,10 +12,9 @@ Session(app)
 matt_ip = "3.21.193.76" #test matt
 #matt_ip = "3.14.124.94" #production matt
 
-@app.route('/test', methods = ['POST'])
-def test():
-    print("name: " + request.form.get("name"))
-    return make_response(request.form.get("name"))
+#@app.route('/test', methods = ['POST'])
+#def test():
+#    return make_response(request.form.get("name"))
 
 @app.route('/')
 def home():
@@ -28,6 +27,7 @@ def login():
     if request.method =='POST':
         session["user"] = request.form.get("user")
         session["password"] = request.form.get("password")
+        session["team"] = "TEAM" + request.form.get("team_number")
         return redirect("/")
     return render_template('login.html')
 
@@ -37,12 +37,10 @@ def pull_daily_observations_yaml():
     import json
     import yaml
 
-    session["team"] = request.form.get("team")
     session["day"] = request.form.get("day")
 
     r_session = requests.Session()
     r_session.post('https://' + matt_ip + '/login', data={"username": session.get("user"), "password": session.get("password")}, verify=False)
-
     msel_r = r_session.get('https://' + matt_ip + '/api/measure-evaluations', verify=False)
     msel_json = json.loads(msel_r.text)
 
@@ -75,7 +73,6 @@ def pull_daily_observations_excel():
     import yaml
     import xlsxwriter
 
-    session["team"] = request.form.get("team")
     session["day"] = request.form.get("day")
 
     r_session = requests.Session()
@@ -99,9 +96,12 @@ def pull_daily_observations_excel():
     current_msel = ''
     row_number = 1
     for entry in relevant_grading_opportunity:
+        print(entry)
         if current_msel == entry['mselId']:
             worksheet.write('B'+str(row_number), entry["measureCode"])
             worksheet.write('C'+str(row_number), entry["description"])
+            worksheet.write('D'+str(row_number), entry["status"])
+            worksheet.write('E'+str(row_number), entry["tacticalAssessmentComments"])
             row_number += 1
         else:
             current_msel = entry['mselId']
@@ -117,6 +117,8 @@ def pull_daily_observations_excel():
             row_number += 1
             worksheet.write('B'+str(row_number), entry["measureCode"])
             worksheet.write('C'+str(row_number), entry["description"])
+            worksheet.write('D'+str(row_number), entry["status"])
+            worksheet.write('E'+str(row_number), entry["tacticalAssessmentComments"])
             row_number += 1
  
     workbook.close()
@@ -129,15 +131,19 @@ def pull_daily_observations_excel():
 def send_observations():
     import requests
     import json
-    import yaml
+    from openpyxl import load_workbook
+
+    evaluations = request.files['file']
+    saved_file = evaluations.save(os.path.join(app.config["UPLOAD_FOLDER"], evaluations.filename))
+
+    wb = load_workbook(filename = os.path.join(app.config["UPLOAD_FOLDER"], evaluations.filename))
+    sheet = wbj.active
+    
+    number = 1
+    for cell in sheet['A']:
+        print(cell.value)
 
     r_session = requests.Session()
-
-    with open("config.yaml", mode="rt", encoding="utf-8") as file:
-        config = yaml.safe_load(file)
-
-    with open(str(config['day']) + ".yaml", mode="rt", encoding="utf-8") as file:
-        evaluations = yaml.safe_load(file)
 
     r_session.post('https://' + matt_ip + '/login', data={"username": session.get("user"), "password": session.get("password")}, verify=False)
 
@@ -149,9 +155,10 @@ def send_observations():
 
     for entry in msel_json:
         for evaluation in evaluations:
-            if entry['mselId'] == evaluation["inject_id"] and entry["measureCode"] == evaluation["measure_code"] and entry["team"] == config["team"]:
+            if entry['mselId'] == evaluation["inject_id"] and entry["measureCode"] == evaluation["measure_code"] and entry["team"] == session["team"]:
                 response = r_session.post('https://' + matt_ip + '/api/measure-evaluations/update', json={"id": entry['id'], "status": evaluation["grade"], "tacticalAssessmentComments": evaluation["comment"], "operationalAssessmentComments": None}, headers={'Content-type': 'application/json; charset=utf-8'}, verify=False)
                 matt_responses.append("Observation {} for MSEL {}, measurecode {}, team {} was successfully changed to {}".format(entry['id'], entry['mselId'], entry['measureCode'], entry['team'], evaluation['grade']))
                 break
 
-    return render_template('observation_results.html', matt_responses = matt_responses)
+    #return render_template('observation_results.html', matt_responses = matt_responses)
+    return 'Hello World'
