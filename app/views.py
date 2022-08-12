@@ -164,8 +164,11 @@ def send_observations():
     for entry in msel_json:
         for evaluation in uploads:
             if entry['mselId'] == evaluation["inject_id"] and entry["measureCode"] == evaluation["measure_code"] and entry["team"] == session["team"]:
-                response = r_session.post('https://' + matt_ip + '/api/measure-evaluations/update', json={"id": entry['id'], "status": evaluation["grade"], "tacticalAssessmentComments": evaluation["comment"], "operationalAssessmentComments": None}, headers={'Content-type': 'application/json; charset=utf-8'}, verify=False)
-                matt_responses.append("Observation {} for MSEL {}, measurecode {}, team {} was successfully changed to {}".format(entry['id'], entry['mselId'], entry['measureCode'], entry['team'], evaluation['grade']))
-                break
+                if entry["status"] == evaluation["grade"] and entry["tacticalAssessmentComments"] == evaluation["comment"]:
+                    break
+                else:
+                    response = r_session.post('https://' + matt_ip + '/api/measure-evaluations/update', json={"id": entry['id'], "status": evaluation["grade"], "tacticalAssessmentComments": evaluation["comment"], "operationalAssessmentComments": None}, headers={'Content-type': 'application/json; charset=utf-8'}, verify=False)
+                    matt_responses.append("Observation {} for MSEL {}, measurecode {}, team {} was successfully changed to {}".format(entry['id'], entry['mselId'], entry['measureCode'], entry['team'], evaluation['grade']))
+                    break
 
     return render_template('observation_results.html', matt_responses = matt_responses)
