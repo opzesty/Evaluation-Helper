@@ -9,8 +9,8 @@ app.config["SESSION_TYPE"] = "filesystem"
 app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "uploads")
 Session(app)
 
-matt_ip = "3.21.193.76" #test matt
-#matt_ip = "3.14.124.94" #production matt
+#matt_ip = "3.21.193.76" #test matt
+matt_ip = "3.14.124.94" #production matt
 
 #@app.route('/test', methods = ['POST'])
 #def test():
@@ -105,9 +105,9 @@ def pull_daily_observations_excel():
             row_number += 1
         else:
             current_msel = entry['mselId']
-            worksheet.write('A'+str(row_number), "Inject ID: ")
+            worksheet.write('A'+str(row_number), "Inject ID:")
             worksheet.write('B'+str(row_number), entry["mselId"])
-            worksheet.write('C'+str(row_number), "Inject Title")
+            worksheet.write('C'+str(row_number), "Inject Title:")
             worksheet.write('D'+str(row_number), entry["title"])
             row_number += 1
             worksheet.write('B'+str(row_number), "Measure Code")
@@ -137,11 +137,19 @@ def send_observations():
     saved_file = evaluations.save(os.path.join(app.config["UPLOAD_FOLDER"], evaluations.filename))
 
     wb = load_workbook(filename = os.path.join(app.config["UPLOAD_FOLDER"], evaluations.filename))
-    sheet = wbj.active
+    sheet = wb.active
     
+    uploads = []
+    inject_id = ""
     number = 1
-    for cell in sheet['A']:
-        print(cell.value)
+    for row in sheet:
+        if row[0].value != None and row[0].value.strip() == 'Inject ID:':
+            inject_id = row[1].value
+        elif row[1].value.strip() == 'Measure Code':
+            pass
+        else:
+            entry = {"inject_id": inject_id, "measure_code": row[1].value, "grade": row[3].value, "comment": row[4].value}
+            uploads.append(entry)
 
     r_session = requests.Session()
 
@@ -154,11 +162,10 @@ def send_observations():
     matt_responses = []
 
     for entry in msel_json:
-        for evaluation in evaluations:
+        for evaluation in uploads:
             if entry['mselId'] == evaluation["inject_id"] and entry["measureCode"] == evaluation["measure_code"] and entry["team"] == session["team"]:
                 response = r_session.post('https://' + matt_ip + '/api/measure-evaluations/update', json={"id": entry['id'], "status": evaluation["grade"], "tacticalAssessmentComments": evaluation["comment"], "operationalAssessmentComments": None}, headers={'Content-type': 'application/json; charset=utf-8'}, verify=False)
                 matt_responses.append("Observation {} for MSEL {}, measurecode {}, team {} was successfully changed to {}".format(entry['id'], entry['mselId'], entry['measureCode'], entry['team'], evaluation['grade']))
                 break
 
-    #return render_template('observation_results.html', matt_responses = matt_responses)
-    return 'Hello World'
+    return render_template('observation_results.html', matt_responses = matt_responses)
