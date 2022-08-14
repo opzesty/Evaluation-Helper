@@ -9,8 +9,10 @@ app.config["SESSION_TYPE"] = "filesystem"
 app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "uploads")
 Session(app)
 
-matt_ip = "3.21.193.76" #test matt
-#matt_ip = "3.14.124.94" #production matt
+test_ip = "3.21.193.76" #test matt
+production_ip = "3.14.124.94" #production matt
+
+active_ip = test_ip
 
 #@app.route('/test', methods = ['POST'])
 #def test():
@@ -20,7 +22,11 @@ matt_ip = "3.21.193.76" #test matt
 def home():
     if not session.get("user"):
         return redirect("/login")
-    return render_template('index.html')
+    if active_ip == production_ip:
+        server_type = "production"
+    else:
+        server_type = "test"
+    return render_template("index.html", server = server_type)
 
 @app.route('/login', methods = ['POST', 'GET'])
 def login():
@@ -31,6 +37,11 @@ def login():
         return redirect("/")
     return render_template('login.html')
 
+@app.route('/logout', methods = ['GET'])
+def logout():
+    session.clear()
+    return redirect("/")
+
 @app.route('/pull_day_yaml', methods = ['POST'])
 def pull_daily_observations_yaml():
     import requests
@@ -40,8 +51,8 @@ def pull_daily_observations_yaml():
     session["day"] = request.form.get("day")
 
     r_session = requests.Session()
-    r_session.post('https://' + matt_ip + '/login', data={"username": session.get("user"), "password": session.get("password")}, verify=False)
-    msel_r = r_session.get('https://' + matt_ip + '/api/measure-evaluations', verify=False)
+    r_session.post('https://' + active_ip + '/login', data={"username": session.get("user"), "password": session.get("password")}, verify=False)
+    msel_r = r_session.get('https://' + active_ip + '/api/measure-evaluations', verify=False)
     msel_json = json.loads(msel_r.text)
 
     relevant_grading_opportunity = []
@@ -76,9 +87,9 @@ def pull_daily_observations_excel():
     session["day"] = request.form.get("day")
 
     r_session = requests.Session()
-    r_session.post('https://' + matt_ip + '/login', data={"username": session.get("user"), "password": session.get("password")}, verify=False)
+    r_session.post('https://' + active_ip + '/login', data={"username": session.get("user"), "password": session.get("password")}, verify=False)
 
-    msel_r = r_session.get('https://' + matt_ip + '/api/measure-evaluations', verify=False)
+    msel_r = r_session.get('https://' + active_ip + '/api/measure-evaluations', verify=False)
     msel_json = json.loads(msel_r.text)
 
     relevant_grading_opportunity = []
@@ -89,6 +100,64 @@ def pull_daily_observations_excel():
     relevant_grading_opportunity = sorted(relevant_grading_opportunity, key=lambda x: x['mselId'])
 
     file_name = session["day"] + ".xlsx"
+    workbook = xlsxwriter.Workbook(os.path.join(app.config["UPLOAD_FOLDER"], file_name))
+    worksheet = workbook.add_worksheet()
+
+    matt_responses = []
+    current_msel = ''
+    row_number = 1
+    for entry in relevant_grading_opportunity:
+        if current_msel == entry['mselId']:
+            worksheet.write('B'+str(row_number), entry["measureCode"])
+            worksheet.write('C'+str(row_number), entry["description"])
+            worksheet.write('D'+str(row_number), entry["status"])
+            worksheet.write('E'+str(row_number), entry["tacticalAssessmentComments"])
+            row_number += 1
+        else:
+            current_msel = entry['mselId']
+            worksheet.write('A'+str(row_number), "Inject ID:")
+            worksheet.write('B'+str(row_number), entry["mselId"])
+            worksheet.write('C'+str(row_number), "Inject Title:")
+            worksheet.write('D'+str(row_number), entry["title"])
+            row_number += 1
+            worksheet.write('B'+str(row_number), "Measure Code")
+            worksheet.write('C'+str(row_number), "MOP/MOE Description")
+            worksheet.write('D'+str(row_number), "Grade")
+            worksheet.write('E'+str(row_number), "Comment")
+            row_number += 1
+            worksheet.write('B'+str(row_number), entry["measureCode"])
+            worksheet.write('C'+str(row_number), entry["description"])
+            worksheet.write('D'+str(row_number), entry["status"])
+            worksheet.write('E'+str(row_number), entry["tacticalAssessmentComments"])
+            row_number += 1
+ 
+    workbook.close()
+
+    #resp = make_response(./session["day"] + ".xlsx")
+    #resp.headers['Content-Type'] = 'text/xlsx'
+    return send_from_directory(app.config["UPLOAD_FOLDER"], file_name, as_attachment=True)
+
+@app.route('/pull_all_excel', methods = ['GET'])
+def pull_all_observations_excel():
+    import requests
+    import json
+    import yaml
+    import xlsxwriter
+
+    r_session = requests.Session()
+    r_session.post('https://' + active_ip + '/login', data={"username": session.get("user"), "password": session.get("password")}, verify=False)
+
+    msel_r = r_session.get('https://' + active_ip + '/api/measure-evaluations', verify=False)
+    msel_json = json.loads(msel_r.text)
+
+    relevant_grading_opportunity = []
+    for entry in msel_json:
+        if entry["team"] == session["team"]:
+            relevant_grading_opportunity.append(entry)
+
+    relevant_grading_opportunity = sorted(relevant_grading_opportunity, key=lambda x: x['mselId'])
+
+    file_name = session["team"] + ".xlsx"
     workbook = xlsxwriter.Workbook(os.path.join(app.config["UPLOAD_FOLDER"], file_name))
     worksheet = workbook.add_worksheet()
 
@@ -140,7 +209,6 @@ def send_observations():
     
     uploads = []
     inject_id = ""
-    number = 1
     for row in sheet:
         if row[0].value != None and row[0].value.strip() == 'Inject ID:':
             inject_id = row[1].value
@@ -152,22 +220,34 @@ def send_observations():
 
     r_session = requests.Session()
 
-    r_session.post('https://' + matt_ip + '/login', data={"username": session.get("user"), "password": session.get("password")}, verify=False)
+    r_session.post('https://' + active_ip + '/login', data={"username": session.get("user"), "password": session.get("password")}, verify=False)
 
-    msel_r = r_session.get('https://' + matt_ip + '/api/measure-evaluations', verify=False)
+    msel_r = r_session.get('https://' + active_ip + '/api/measure-evaluations', verify=False)
 
     msel_json = json.loads(msel_r.text)
 
     matt_responses = []
 
     for entry in msel_json:
+        if not uploads:
+            matt_responses.append("No changes to upload")
+            break
         for evaluation in uploads:
             if entry['mselId'] == evaluation["inject_id"] and entry["measureCode"] == evaluation["measure_code"] and entry["team"] == session["team"]:
                 if entry["status"] == evaluation["grade"] and entry["tacticalAssessmentComments"] == evaluation["comment"]:
                     pass
                 else:
-                    response = r_session.post('https://' + matt_ip + '/api/measure-evaluations/update', json={"id": entry['id'], "status": evaluation["grade"], "tacticalAssessmentComments": evaluation["comment"], "operationalAssessmentComments": None}, headers={'Content-type': 'application/json; charset=utf-8'}, verify=False)
-                    matt_responses.append("Observation {} for MSEL {}, measurecode {}, team {} was successfully changed to {}".format(entry['id'], entry['mselId'], entry['measureCode'], entry['team'], evaluation['grade']))
+                    response = r_session.post(
+                        'https://' + active_ip + '/api/measure-evaluations/update',
+                        json={"id": entry['id'],
+                        "status": evaluation["grade"],
+                        "tacticalAssessmentComments": evaluation["comment"],
+                        "operationalAssessmentComments": None},
+                        headers={'Content-type': 'application/json; charset=utf-8'},
+                        verify=False)
+                    matt_responses.append(
+                        "Observation {} for MSEL {}, measurecode {}, team {} was successfully changed to {}"
+                        .format(entry['id'], entry['mselId'], entry['measureCode'], entry['team'], evaluation['grade']))
                     break
 
     return render_template('observation_results.html', matt_responses = matt_responses)

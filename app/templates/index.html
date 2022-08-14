@@ -8,7 +8,10 @@
   </head>
   
   <body>
-    <h2>{{ session.user }} you are logged in.</h2>
+    <h2>{{ session.user }} you are logged in to a {{ server }} MATT Server.</h2>
+		<form action="/logout" method = "GET">
+				<p><input type = "submit" value = "logout" /></p>
+		</form>
 <!--    <h1>Pull Day Observation Template (yaml)</h1>
 		<form action="/pull_day_yaml" method = "POST">
 				<p>Day <input type = "text" name = "day" /></p>
@@ -18,6 +21,10 @@
 		<form action="/pull_day_excel" method = "POST">
 				<p>Day <input type = "text" name = "day" /></p>
 				<p><input type = "submit" value = "submit" /></p>
+		</form>
+    <h1>Pull ALL Observation Template (excel)</h1>
+		<form action="/pull_all_excel" method = "GET">
+				<p><input type = "submit" value = "FOR LIVINGSTON" /></p>
 		</form>
     <h1>Send the loaded observations</h1>
 		<form action="/update_msel" method = "POST" enctype="multipart/form-data">
